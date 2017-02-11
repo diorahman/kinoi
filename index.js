@@ -7,13 +7,16 @@ module.exports = {
 }
 
 function raw (req, cb) {
+  // turns out this one is really slow
   return new Promise(function (resolve, reject) {
     var data = []
     req.on('data', function (chunk) {
       data.push(Buffer.from(chunk))
+      chunk = null
     })
     req.on('end', function () {
-      resolve(Buffer.concat(data).toString())
+      resolve(Buffer.concat(data))
+      data = null
     })
   })
 }
@@ -47,6 +50,7 @@ function run (req, res, fn) {
 function* parse (req) {
   var str = ''
   try {
+    // skipping this will gain 20000
     str = yield raw(req)
   } catch (err) {
     // parsing error
@@ -54,6 +58,7 @@ function* parse (req) {
   }
 
   try {
+    // skipping this will gain 2000
     return JSON.parse(str)
   } catch (err) {
     throw new Error(err.message)
@@ -91,6 +96,9 @@ function send (res, code, obj = null) {
   }
 
   if (typeof obj === 'object') {
+    // skipping stringify will gain 1000
+    // hence make this fast will be useful
+    // options: use schema
     var str = JSON.stringify(obj)
     res.setHeader('Content-Type', 'application/json')
     res.setHeader('Content-Length', Buffer.byteLength(str))

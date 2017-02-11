@@ -1,4 +1,4 @@
-const kinoi = require('./kinoi')
+const kinoi = require('./')
 
 function* a (req) {
   return yield kinoi.json(req)
