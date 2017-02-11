@@ -1,0 +1,15 @@
+{
+  "name": "kinoi",
+  "version": "1.0.0",
+  "description": "Nyil, unyil usro",
+  "main": "index.js",
+  "scripts": {
+    "test": ""
+  },
+  "keywords": [],
+  "author": "Dhi Aurrahman <dio@hooq.tv>",
+  "license": "zlib",
+  "dependencies": {
+    "isstream": "^0.1.2"
+  }
+}
