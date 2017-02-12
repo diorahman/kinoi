@@ -1,10 +1,16 @@
-var http = require('./lib/http')
-var status = require('./status')
-var isStream = require('isstream')
+const server = require('./lib/http').Server
+const co = require('bluebird').coroutine
+const Stream = require('stream').Stream
+const run = co(start)
+const isStream = obj => obj instanceof Stream
+const isBuffer = Buffer.isBuffer
+const DEV = process.env.NODE_ENV === 'development'
 
-module.exports = {
-  serve, json, send, async: __async
-}
+module.exports = exports = serve
+exports.json = co(json)
+exports.send = send
+exports.sendError = sendError
+exports.createError = createError
 
 function raw (req, cb) {
   // turns out this one is really slow
@@ -21,119 +27,84 @@ function raw (req, cb) {
   })
 }
 
-function serve (fn) {
-  function handler (req, res) {
-    // FIXME: should be in uws http server
-    res.setHeader = function (key, val) {
-      res.headers = res.headers || []
-      res.headers.push(`${key}: ${val}\r\n`)
-    }
-    run(req, res, fn)
-  }
-  return http.createServer(handler)
-  // return server(handler)
-}
-
-function* start (req, res, fn) {
-  try {
-    var val = yield fn(req, res)
-    return send(res, !val ? 204 : 200, val)
-  } catch (err) {
-    return send(res, err.code || 500, err.message)
-  }
-}
-
-function run (req, res, fn) {
-  return __async(start(req, res, fn))
-}
-
-function* parse (req) {
+function * json (req) {
   var str = ''
   try {
-    // skipping this will gain 20000
     str = yield raw(req)
   } catch (err) {
-    // parsing error
-    throw new Error(err.message)
+    throw createError('Invalid body', 500, err)
   }
 
   try {
-    // skipping this will gain 2000
     return JSON.parse(str)
   } catch (err) {
-    throw new Error(err.message)
+    throw new Error('Invalid JSON body', 500, err)
   }
 }
 
-function json (req, options) {
-  return __async(parse(req, options))
-}
+function send (res, code, obj) {
+  if (typeof obj === 'object') {
+    res.statusCode = code
+    res.setHeader('Content-Type', 'application/json')
+    // FIXME: it can be failed for cyclic object
+    const str = JSON.stringify(obj)
+    res.setHeader('Content-Length', Buffer.byteLength(str))
+    return res.end(str)
+  }
 
-function send (res, code, obj = null) {
-  // FIXME: should be in uws http server
+  if (typeof obj === 'string') {
+    res.statusCode = code
+    res.setHeader('Content-Type', 'application/json')
+    // FIXME: it can be failed for cyclic object
+    res.setHeader('Content-Length', Buffer.byteLength(obj))
+    return res.end(obj)
+  }
+
   if (!obj) {
     res.setHeader('Content-Length', 0)
     return res.end()
   }
 
-  // FIXME: not sure if this one works
-  if (Buffer.isBuffer(obj)) {
-    if (!res.getHeader('Content-Type')) {
-      res.setHeader('Content-Type', 'application/octet-stream')
-    }
-
-    res.setHeader('Content-Length', obj.length)
-    return res.end(obj)
-  }
-
-  // FIXME: not sure if this one works
   if (isStream(obj)) {
-    if (!res.getHeader('Content-Type')) {
-      res.setHeader('Content-Type', 'application/octet-stream')
-    }
-
-    return obj.pipe(res)
+    // FIXME: implement this
+    // stream, not sure it is supported by lib/http
   }
 
-  if (typeof obj === 'object') {
-    // skipping stringify will gain 1000
-    // hence make this fast will be useful
-    // options: use schema
-    var str = JSON.stringify(obj)
-    res.setHeader('Content-Type', 'application/json')
-    res.setHeader('Content-Length', Buffer.byteLength(str))
-
-    // FIXME: this is should be in uws since this is slow
-    return res.end(create(code, res.headers, str))
+  if (isBuffer(obj)) {
+    // FIXME: implement this
+    // buffer, not sure it is supported by lib/http
   }
-
-  res.setHeader('Content-Type', 'text/plain')
-  res.setHeader('Content-Length', Buffer.byteLength('' + obj))
-  return res.end(create(code, res.headers, obj))
 }
 
-function create (code, headers, body) {
-  var response = `HTTP/1.1 ${code} ${status[code]}\r\n`
-  for (var i = 0; i < headers.length; i++) {
-    response += headers[i]
+function * start (req, res, fn) {
+  try {
+    const val = yield fn(req, res)
+    if (!val) {
+      return send(res, 204, null)
+    }
+    send(res, res.statusCode || 200, val)
+  } catch (err) {
+    // send error
   }
-  return response + '\r\n' + body
 }
 
-function __async (g) {
-  return new Promise(function (resolve, reject) {
-    function c (a, x) {
-      try {
-        var r = g[x ? 'throw' : 'next'](a)
-      } catch (e) {
-        return reject(e)
-      }
-      r.done ? resolve(r.value) : Promise.resolve(r.value).then(c, d)
-    }
+function serve (fn) {
+  const cb = co(fn)
+  function handler (req, res) {
+    run(req, res, cb)
+  }
+  return server(handler)
+}
 
-    function d (e) {
-      c(e, 1)
-    }
-    c()
-  })
+function createError (code, message, original) {
+  const err = new Error(message)
+  err.originalError = original
+  err.statusCode = code
+  return err
+}
+
+function sendError (req, res, err) {
+  const obj = DEV ? err.stack : err.statusCode
+    ? err.message : 'Internal Server Error'
+  send(res, err.statusCode || 500, obj)
 }

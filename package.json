@@ -6,10 +6,24 @@
   "scripts": {
     "test": ""
   },
-  "keywords": [],
+  "bin": "bin/kinoi",
+  "keywords": ["micro", "async", "http"],
   "author": "Dhi Aurrahman <dio@hooq.tv>",
-  "license": "zlib",
+  "license": "Zlib",
   "dependencies": {
-    "isstream": "^0.1.2"
-  }
+    "bluebird": "^3.4.7",
+    "minimist": "^1.2.0"
+  },
+  "directories": {
+    "example": "example"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diorahman/kinoi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/diorahman/kinoi/issues"
+  },
+  "homepage": "https://github.com/diorahman/kinoi#readme"
 }
