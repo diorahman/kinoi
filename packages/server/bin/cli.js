@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+global.Promise = require('bluebird')
+
 const fs = require('fs')
 const path = require('path')
 const parse = require('minimist')
