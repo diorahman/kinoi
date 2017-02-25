@@ -25,45 +25,30 @@ function serve (fn) {
   })
 }
 
-function * wait (req, res, fn) {
-  try {
-    const val = yield fn(req, res)
-    // this is a hack, not sure for 100 continue
-    if (!res.headersSent) {
-      send(res, 200, val)
-    }
-  } catch (err) {
-    sendError(req, res, err)
-  }
-}
-
 function run (req, res, fn) {
-  return co(wait(req, res, fn))
+  Promise.resolve(fn(req, res))
+    .then(function (val) {
+      if (!res.headerSent) {
+        send(res, 200, val)
+      }
+    })
+    .catch(function (err) {
+      sendError(req, res, err)
+    })
 }
 
-function * parse (req, {limit = '1mb'} = {}) {
-  try {
-    const type = req.headers['content-type']
-    const length = req.headers['content-length']
-    const encoding = typer.parse(type).parameters.charset
-    const str = yield getRawBody(req, {limit, length, encoding})
-
-    try {
+function json (req, {limit = '1mb'} = {}) {
+  let type = req.headers['content-type']
+  let length = req.headers['content-length']
+  let encoding = typer.parse(type).parameters.charset
+  return getRawBody(req, {limit, length, encoding})
+    .then(function (str) {
       return JSON.parse(str)
-    } catch (err) {
-      throw createError(400, 'Invalid JSON', err)
-    }
-  } catch (err) {
-    if (err.type === 'entity.too.large') {
-      throw createError(413, `Body exceeded ${limit} limit`, err)
-    } else {
+    })
+    .catch(function (err) {
+      // FIXME: catch entity too large error
       throw createError(400, 'Invalid body', err)
-    }
-  }
-}
-
-function json (req, options) {
-  return co(parse(req, options))
+    })
 }
 
 function send (res, code, obj = null) {
@@ -106,13 +91,13 @@ function send (res, code, obj = null) {
 }
 
 function sendError (req, res, err) {
-  const obj = DEV ? err.stack : err.statusCode
+  let obj = DEV ? err.stack : err.statusCode
     ? err.message : 'Internal Server Error'
   send(res, err.statusCode || 500, obj)
 }
 
 function createError (code, msg, orig) {
-  const err = new Error(msg)
+  let err = new Error(msg)
   err.statusCode = code
   err.originalError = orig
   return err
@@ -120,22 +105,4 @@ function createError (code, msg, orig) {
 
 function isStream (obj) {
   return obj instanceof Stream
-}
-
-function co (g) {
-  return new Promise(function (resolve, reject) {
-    function c (a, x) {
-      try {
-        var r = g[x ? 'throw' : 'next'](a)
-      } catch (e) {
-        return reject(e)
-      }
-      r.done ? resolve(r.value) : Promise.resolve(r.value).then(c, d)
-    }
-
-    function d (e) {
-      c(e, 1)
-    }
-    c()
-  })
 }
