@@ -28,7 +28,8 @@ function serve (fn) {
 function run (req, res, fn) {
   Promise.resolve(fn(req, res))
     .then(function (val) {
-      if (!res.headerSent) {
+      // FIXME: should use public API
+      if (!res._headerSent) {
         send(res, 200, val)
       }
     })
