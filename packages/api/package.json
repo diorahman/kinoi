@@ -1,6 +1,6 @@
 {
   "name": "kinoi-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "API configuration on top of kinoi",
   "main": "./lib/api.js",
   "files": [
@@ -39,7 +39,7 @@
     "tarik": "^1.0.2"
   },
   "dependencies": {
-    "kinoi": "^1.0.0",
+    "kinoi": "^1.0.1",
     "shortid": "^2.2.6",
     "uniloc": "^0.3.0"
   }
