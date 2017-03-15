@@ -1,3 +1,3 @@
 ## kinoi
 
-small and fast
+small, fast and efficient http server
