@@ -25,6 +25,7 @@ let router = null
 
 const handler = async function (req, res) {
   const {name, options} = router.lookup(req.url, req.method)
+  // FIXME: use promise
   if (/json/.test(req.headers['content-type'])) {
     try {
       req.body = await json(req)
