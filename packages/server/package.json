@@ -39,6 +39,7 @@
     "bluebird": "^3.4.7",
     "gen-optim": "^1.0.1",
     "media-typer": "^0.3.0",
+    "minimist": "^1.2.0",
     "raw-body": "^2.2.0"
   }
 }
