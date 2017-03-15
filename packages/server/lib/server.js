@@ -21,6 +21,7 @@ exports.createError = createError
 
 function serve (fn) {
   return server(function (req, res) {
+    // FIXME: should we check if fn a promise or not?
     run(req, res, fn)
   })
 }
@@ -58,7 +59,7 @@ function send (res, code, obj = null) {
 
   if (obj === null) {
     str = ''
-    res.statusCode = code
+    res.statusCode = code || 204
   }
 
   if (obj && isStream(obj)) {
