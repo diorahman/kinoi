@@ -1,3 +1,4 @@
 node_modules
 *.log
 *.compiled.*
+packages/api/lib/
